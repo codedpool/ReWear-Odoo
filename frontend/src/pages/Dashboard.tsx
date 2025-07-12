@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Package, ArrowUpDown, Star, MapPin, Calendar, Eye, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { mockItems, mockSwapRequests } from '../data/mockData';
+import { ClothingItem, SwapRequest } from '../types';
+import Footer from '../components/Footer';
 
 interface DashboardProps {
   onNavigate: (page: string, itemId?: string) => void;
@@ -10,16 +11,91 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'swaps'>('overview');
+  const [userItems, setUserItems] = useState<ClothingItem[]>([]);
+  const [userSwapRequests, setUserSwapRequests] = useState<SwapRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      fetchUserItems();
+      fetchUserSwapRequests();
+    }
+  }, [user]);
+
+  const fetchUserItems = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/items/me', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch items');
+      setUserItems(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserSwapRequests = async () => {
+    try {
+      const response = await fetch('/api/swaps', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch swap requests');
+      setUserSwapRequests(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch swap requests');
+    }
+  };
+
+  const handleAcceptSwap = async (swapId: string) => {
+    try {
+      const response = await fetch(`/api/swaps/${swapId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: 'accepted' })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to accept swap');
+      setUserSwapRequests(userSwapRequests.map(swap =>
+        swap.id === swapId ? { ...swap, status: 'accepted' } : swap
+      ));
+    } catch (err: any) {
+      setError(err.message || 'Failed to accept swap');
+    }
+  };
+
+  const handleDeclineSwap = async (swapId: string) => {
+    try {
+      const response = await fetch(`/api/swaps/${swapId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: 'declined' })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to decline swap');
+      setUserSwapRequests(userSwapRequests.map(swap =>
+        swap.id === swapId ? { ...swap, status: 'declined' } : swap
+      ));
+    } catch (err: any) {
+      setError(err.message || 'Failed to decline swap');
+    }
+  };
 
   if (!user) {
     onNavigate('auth');
     return null;
   }
-
-  const userItems = mockItems.filter(item => item.uploaderId === user.id);
-  const userSwapRequests = mockSwapRequests.filter(swap => 
-    swap.requesterId === user.id || mockItems.find(item => item.id === swap.itemId)?.uploaderId === user.id
-  );
 
   const stats = [
     { label: 'Items Listed', value: userItems.length, icon: Package },
@@ -39,9 +115,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -52,28 +127,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 Manage your items and track your swaps
               </p>
             </div>
-            <button
-              onClick={() => onNavigate('add-item')}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
-            >
-              <Plus className="h-5 w-5" />
-              <span>List New Item</span>
-            </button>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => onNavigate('add-item')}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+              >
+                <Plus className="h-5 w-5" />
+                <span>List New Item</span>
+              </button>
+              {user.isAdmin && (
+                <button
+                  onClick={() => onNavigate('admin')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                >
+                  <span>Admin Panel</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {error && <p className="text-red-600 mb-4">{error}</p>}
+        {loading && <p className="text-gray-600 dark:text-gray-400">Loading...</p>}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
             <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {stat.label}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {stat.value}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 </div>
                 <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-lg">
                   <stat.icon className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -83,7 +166,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           ))}
         </div>
 
-        {/* Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="flex space-x-8 px-6">
@@ -110,11 +192,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div className="p-6">
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                {/* Profile Info */}
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Profile Information
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profile Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center space-x-3">
                       {user.avatar && (
@@ -140,11 +219,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   </div>
                 </div>
 
-                {/* Recent Activity */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Recent Activity
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
                   <div className="space-y-3">
                     {userSwapRequests.slice(0, 3).map((swap) => (
                       <div key={swap.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -295,10 +371,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
                         {swap.status === 'pending' && (
                           <div className="flex items-center space-x-3 mt-4">
-                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <button
+                              onClick={() => handleAcceptSwap(swap.id)}
+                              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            >
                               Accept
                             </button>
-                            <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <button
+                              onClick={() => handleDeclineSwap(swap.id)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            >
                               Decline
                             </button>
                           </div>
@@ -322,6 +404,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -1,85 +1,60 @@
-import { ClothingItem, SwapRequest } from '../types';
+import { ClothingItem, SwapRequest, User } from '../types';
+
+export const mockUsers: User[] = [
+  {
+    id: '1',
+    name: 'John Doe',
+    email: 'john@example.com',
+    points: 100,
+    joinedDate: '2025-01-01',
+    location: 'New York, NY'
+  },
+  {
+    id: '2',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    points: 150,
+    joinedDate: '2025-02-01',
+    location: 'Los Angeles, CA'
+  }
+];
 
 export const mockItems: ClothingItem[] = [
   {
     id: '1',
-    title: 'Vintage Denim Jacket',
-    description: 'Classic blue denim jacket from the 90s. Perfect condition with minimal wear. Great for layering and adding a vintage touch to any outfit.',
+    title: 'Blue Denim Jacket',
+    description: 'A stylish blue denim jacket in great condition.',
     category: 'outerwear',
     type: 'Jacket',
     size: 'M',
-    condition: 'good',
-    tags: ['vintage', 'denim', 'casual', '90s'],
-    images: [
-      'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ],
-    uploaderId: '2',
-    uploaderName: 'Emma Wilson',
-    uploaderAvatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    pointValue: 45,
-    isAvailable: true,
-    uploadDate: '2024-01-10',
-    location: 'Los Angeles, CA'
-  },
-  {
-    id: '2',
-    title: 'Floral Summer Dress',
-    description: 'Beautiful floral midi dress perfect for summer occasions. Lightweight fabric with a flattering A-line silhouette.',
-    category: 'dresses',
-    type: 'Midi Dress',
-    size: 'S',
     condition: 'like-new',
-    tags: ['floral', 'summer', 'midi', 'feminine'],
-    images: [
-      'https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ],
-    uploaderId: '3',
-    uploaderName: 'Alex Chen',
-    uploaderAvatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    pointValue: 35,
+    tags: ['casual', 'denim', 'blue'],
+    images: ['/images/denim-jacket.jpg'],
+    uploaderId: '1',
+    uploaderName: 'John Doe',
+    uploaderAvatar: '/images/john-avatar.jpg',
+    pointValue: 50,
     isAvailable: true,
-    uploadDate: '2024-01-08',
+    uploadDate: '2025-07-01',
     location: 'New York, NY'
   },
   {
-    id: '3',
-    title: 'Designer Leather Boots',
-    description: 'High-quality leather ankle boots from a premium brand. Barely worn, excellent condition. Perfect for fall and winter styling.',
-    category: 'shoes',
-    type: 'Ankle Boots',
-    size: '8',
-    condition: 'like-new',
-    tags: ['leather', 'designer', 'boots', 'fall'],
-    images: [
-      'https://images.pexels.com/photos/1464625/pexels-photo-1464625.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ],
-    uploaderId: '4',
-    uploaderName: 'Maria Garcia',
-    uploaderAvatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    pointValue: 65,
+    id: '2',
+    title: 'Red Summer Dress',
+    description: 'Vibrant red dress, perfect for summer outings.',
+    category: 'dresses',
+    type: 'Dress',
+    size: 'S',
+    condition: 'new',
+    tags: ['summer', 'red', 'casual'],
+    images: ['/images/red-dress.jpg'],
+    uploaderId: '2',
+    uploaderName: 'Jane Smith',
+    uploaderAvatar: '/images/jane-avatar.jpg',
+    pointValue: 70,
     isAvailable: true,
-    uploadDate: '2024-01-05',
-    location: 'Chicago, IL'
-  },
-  {
-    id: '4',
-    title: 'Cozy Knit Sweater',
-    description: 'Soft wool blend sweater in cream color. Perfect for layering during colder months. Oversized fit for maximum comfort.',
-    category: 'tops',
-    type: 'Sweater',
-    size: 'L',
-    condition: 'good',
-    tags: ['knit', 'cozy', 'wool', 'oversized'],
-    images: [
-      'https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ],
-    uploaderId: '5',
-    uploaderName: 'David Kim',
-    pointValue: 30,
-    isAvailable: true,
-    uploadDate: '2024-01-03',
-    location: 'Seattle, WA'
+    uploadDate: '2025-07-05',
+    location: 'Los Angeles, CA'
   }
 ];
 
@@ -87,24 +62,14 @@ export const mockSwapRequests: SwapRequest[] = [
   {
     id: '1',
     requesterId: '2',
-    requesterName: 'Emma Wilson',
+    requesterName: 'Jane Smith',
     itemId: '1',
-    itemTitle: 'Vintage Denim Jacket',
+    itemTitle: 'Blue Denim Jacket',
     offeredItemId: '2',
-    offeredItemTitle: 'Floral Summer Dress',
+    offeredItemTitle: 'Red Summer Dress',
     type: 'swap',
     status: 'pending',
-    createdDate: '2024-01-12',
-    message: 'Hi! I love your denim jacket. Would you be interested in swapping for my floral dress?'
-  },
-  {
-    id: '2',
-    requesterId: '3',
-    requesterName: 'Alex Chen',
-    itemId: '3',
-    itemTitle: 'Designer Leather Boots',
-    type: 'points',
-    status: 'completed',
-    createdDate: '2024-01-10'
+    createdDate: '2025-07-10',
+    message: 'Interested in swapping for your jacket!'
   }
 ];

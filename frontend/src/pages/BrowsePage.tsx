@@ -1,23 +1,28 @@
-import React, { useState } from 'react';
-import { Search, Filter, Grid, List, SlidersHorizontal } from 'lucide-react';
-import { mockItems } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Grid, List } from 'lucide-react';
 import ItemCard from '../components/ItemCard';
+import { ClothingItem } from '../types';
+import Footer from '../components/Footer';
 
 interface BrowsePageProps {
   onNavigate: (page: string, itemId?: string) => void;
 }
 
 const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedCondition, setSelectedCondition] = useState('all');
-  const [selectedSize, setSelectedSize] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [items, setItems] = useState<ClothingItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCondition, setSelectedCondition] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const categories = [
-    { value: 'all', label: 'All Categories' },
+    { value: '', label: 'All Categories' },
     { value: 'tops', label: 'Tops' },
     { value: 'bottoms', label: 'Bottoms' },
     { value: 'dresses', label: 'Dresses' },
@@ -27,7 +32,7 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
   ];
 
   const conditions = [
-    { value: 'all', label: 'All Conditions' },
+    { value: '', label: 'All Conditions' },
     { value: 'new', label: 'New' },
     { value: 'like-new', label: 'Like New' },
     { value: 'good', label: 'Good' },
@@ -35,92 +40,98 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
   ];
 
   const sizes = [
-    { value: 'all', label: 'All Sizes' },
+    { value: '', label: 'All Sizes' },
     { value: 'XS', label: 'XS' },
     { value: 'S', label: 'S' },
     { value: 'M', label: 'M' },
     { value: 'L', label: 'L' },
-    { value: 'XL', label: 'XL' },
-    { value: 'XXL', label: 'XXL' }
+    { value: 'XL', label: 'XL' }
   ];
 
   const sortOptions = [
-    { value: 'newest', label: 'Newest First' },
-    { value: 'oldest', label: 'Oldest First' },
+    { value: 'recent', label: 'Most Recent' },
     { value: 'points-low', label: 'Points: Low to High' },
-    { value: 'points-high', label: 'Points: High to Low' },
-    { value: 'title', label: 'Title A-Z' }
+    { value: 'points-high', label: 'Points: High to Low' }
   ];
 
-  const filteredItems = mockItems
-    .filter(item => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-      const matchesCondition = selectedCondition === 'all' || item.condition === selectedCondition;
-      const matchesSize = selectedSize === 'all' || item.size === selectedSize;
-      
-      return matchesSearch && matchesCategory && matchesCondition && matchesSize;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
-        case 'oldest':
-          return new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
-        case 'points-low':
-          return a.pointValue - b.pointValue;
-        case 'points-high':
-          return b.pointValue - a.pointValue;
-        case 'title':
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
-    });
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  useEffect(() => {
+    let result = [...items];
+    if (searchQuery) {
+      result = result.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    if (selectedCategory) {
+      result = result.filter(item => item.category === selectedCategory);
+    }
+    if (selectedCondition) {
+      result = result.filter(item => item.condition === selectedCondition);
+    }
+    if (selectedSize) {
+      result = result.filter(item => item.size === selectedSize);
+    }
+    if (sortBy === 'points-low') {
+      result.sort((a, b) => a.pointValue - b.pointValue);
+    } else if (sortBy === 'points-high') {
+      result.sort((a, b) => b.pointValue - a.pointValue);
+    } else {
+      result.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+    }
+    setFilteredItems(result);
+  }, [searchQuery, selectedCategory, selectedCondition, selectedSize, sortBy, items]);
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/items', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch items');
+      setItems(data.filter((item: ClothingItem) => item.isApproved)); // Only show approved items
+      setFilteredItems(data.filter((item: ClothingItem) => item.isApproved));
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        <h1 className="text-4xl font-bold text-green-700 dark:text-green-400 mb-8">Browse Items</h1>
+
+        {error && <p className="text-red-600 mb-4">{error}</p>}
+        {loading && <p className="text-gray-600 dark:text-gray-400">Loading...</p>}
+
         <div className="mb-8">
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-3 tracking-tight">
-            Browse Items
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
-            Discover amazing pieces from our community
-          </p>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8 mb-8">
-          {/* Search Bar */}
-          <div className="relative mb-6">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <div className="relative w-full sm:w-80">
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white bg-gray-50 dark:bg-gray-700"
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             </div>
-            <input
-              type="text"
-              placeholder="Search items, descriptions, or tags..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-4 border border-gray-300 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white bg-gray-50 dark:bg-gray-700 text-lg"
-            />
-          </div>
-
-          {/* Filter Toggle */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
-            >
-              <SlidersHorizontal className="h-5 w-5" />
-              <span>Filters</span>
-            </button>
 
             <div className="flex items-center space-x-4">
-              {/* View Mode Toggle */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300"
+              >
+                <Filter className="h-5 w-5" />
+                <span>Filters</span>
+              </button>
+
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setViewMode('grid')}
@@ -136,7 +147,6 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
                 </button>
               </div>
 
-              {/* Sort */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -151,13 +161,10 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Filters */}
           {showFilters && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
-                  Category
-                </label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Category</label>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
@@ -172,9 +179,7 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
-                  Condition
-                </label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Condition</label>
                 <select
                   value={selectedCondition}
                   onChange={(e) => setSelectedCondition(e.target.value)}
@@ -189,9 +194,7 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
-                  Size
-                </label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Size</label>
                 <select
                   value={selectedSize}
                   onChange={(e) => setSelectedSize(e.target.value)}
@@ -208,14 +211,12 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
           )}
         </div>
 
-        {/* Results */}
         <div className="mb-8">
           <p className="text-lg text-gray-600 dark:text-gray-400 font-medium">
-            Showing {filteredItems.length} of {mockItems.length} items
+            Showing {filteredItems.length} items
           </p>
         </div>
 
-        {/* Items Grid/List */}
         {filteredItems.length > 0 ? (
           <div className={viewMode === 'grid' 
             ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8'
@@ -231,18 +232,13 @@ const BrowsePage: React.FC<BrowsePageProps> = ({ onNavigate }) => {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="text-gray-400 dark:text-gray-500 mb-4">
-              <Search className="h-16 w-16 mx-auto" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-              No items found
-            </h3>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Try adjusting your search or filter criteria
-            </p>
+            <Search className="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500" />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">No items found</h3>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Try adjusting your search or filter criteria</p>
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 };

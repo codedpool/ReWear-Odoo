@@ -68,7 +68,8 @@ const createItem = asyncHandler(async (req, res) => {
     uploaderName: req.user.name,
     uploaderAvatar: req.user.avatar,
     pointValue,
-    location
+    location,
+    isApproved: false // Require admin approval
   });
 
   res.status(201).json(item);

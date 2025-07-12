@@ -22,6 +22,7 @@ const itemSchema = new mongoose.Schema({
   uploaderAvatar: { type: String },
   pointValue: { type: Number, required: true, min: 0 },
   isAvailable: { type: Boolean, default: true },
+  isApproved: { type: Boolean, default: false }, // Added for admin approval
   uploadDate: { type: Date, default: Date.now },
   location: { type: String }
 }, {
